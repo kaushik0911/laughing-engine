@@ -1,62 +1,53 @@
-version: "3.8"
+version: "3"
 
 services:
   namenode:
     image: ramilu90/hadoop-namenode
-    container_name: cw-namenode
+    container_name: namenode
     platform: linux/amd64
+    restart: always
     ports:
-      - "9870:9870" # Hadoop 3.x Namenode UI
-      - "9000:9000" # IPC port
-    mem_limit: 256m
+      - 9870:9870
+      - 9000:9000
     environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
       - CLUSTER_NAME=test
-    networks:
-      - hadoop-net
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    mem_limit: 1g  # Allocate 1 GB for NameNode
+    env_file:
+      - ./hadoop.env
 
   datanode:
     image: ramilu90/hadoop-datanode
-    container_name: cw-datanode
+    container_name: datanode
     platform: linux/amd64
-    depends_on:
-      - namenode
+    restart: always
+    ports:
+      - "9864:9864"
     environment:
+      - SERVICE_PRECONDITION=namenode:9870
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - CLUSTER_NAME=test
-    mem_limit: 256m
-    networks:
-      - hadoop-net
+    mem_limit: 1g  # Allocate 1 GB for DataNode
+    env_file:
+      - ./hadoop.env
 
   resourcemanager:
     image: ramilu90/hadoop-datanode
-    container_name: cw-resourcemanager
+    container_name: resourcemanager
     platform: linux/amd64
-    command: ["yarn", "resourcemanager"]
-    depends_on:
-      - namenode
-      - datanode
-    ports:
-      - 8088:8088
-    mem_limit: 256m
+    restart: always
     environment:
-      - CLUSTER_NAME=test
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
-    networks:
-      - hadoop-net
+      - SERVICE_PRECONDITION=namenode:9000 namenode:9870 datanode:9864
+    mem_limit: 512m  # Allocate 512 MB for ResourceManager
+    env_file:
+      - ./hadoop.env
 
   nodemanager:
     image: ramilu90/hadoop-datanode
-    container_name: cw-nodemanager
+    container_name: nodemanager
     platform: linux/amd64
-    command: ["yarn", "nodemanager"]
-    mem_limit: 256m
+    restart: always
     environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - YARN_CONF_yarn_nodemanager_resource_memory-mb=256
-    networks:
-      - hadoop-net
-
-networks:
-  hadoop-net:
+      - SERVICE_PRECONDITION=namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088
+    mem_limit: 512m  # Allocate 512 MB for NodeManager
+    env_file:
+      - ./hadoop.env # Allocate 512 MB for Spark Worker
