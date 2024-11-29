@@ -1,0 +1,51 @@
+services:
+  hive-namenode:
+    image: bde2020/hadoop-namenode:1.1.0-hadoop2.8-java8
+    container_name: hive-namenode
+    platform: linux/amd64
+    volumes:
+      - ./resources:/opt/hadoop/resources
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+    ports:
+      - 50070:50070
+    mem_limit: 1g
+  hive-datanode:
+    image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
+    platform: linux/amd64
+    container_name: hive-datanode
+    depends_on: 
+      - hive-namenode
+    env_file:
+      - ./hadoop.env
+    ports:
+      - 50075:50075
+    mem_limit: 1g
+  hive-server:
+    image: bde2020/hive:2.1.0-postgresql-metastore
+    platform: linux/amd64
+    volumes:
+      - ./resources:/opt/hadoop/resources
+    container_name: hive-server
+    env_file:
+      - ./hadoop.env
+    environment:
+      - "HIVE_CORE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore/metastore"
+    ports:
+      - "10000:10000"
+    mem_limit: 512mb
+  hive-metastore:
+    image: bde2020/hive:2.1.0-postgresql-metastore
+    platform: linux/amd64
+    container_name: hive-metastore
+    env_file:
+      - ./hadoop.env
+    command: /opt/hive/bin/hive --service metastore
+    mem_limit: 512mb
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.1.0
+    platform: linux/amd64
+    container_name: hive-metastore-postgresql
+    mem_limit: 512mb

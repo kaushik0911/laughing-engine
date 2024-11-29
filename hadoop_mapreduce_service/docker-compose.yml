@@ -60,19 +60,6 @@ services:
     env_file:
       - ./hadoop.env
 
-  # historyserver:
-  #   image: ramilu90/hadoop-historyserver
-  #   container_name: historyserver
-  #   platform: linux/amd64
-  #   environment:
-  #     - HADOOP_HOME=/opt/hadoop-3.2.1/
-  #     - HDFS_NAMENODE_ADDRESS=namenode:9000
-  #   env_file:
-  #     - ./hadoop.env
-  #   depends_on:
-  #     - namenode
-  #     - resourcemanager
-
 networks:
   default:
     driver: bridge

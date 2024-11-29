@@ -2,6 +2,8 @@
     "cSpell.words": [
         "datanode",
         "hdfs",
+        "javax",
+        "jdbc",
         "namenode",
         "nodemanager",
         "ramilu",
