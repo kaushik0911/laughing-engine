@@ -62,3 +62,10 @@ CREATE TABLE recharge ( cell_no INT, city STRING, name STRING, price FLOAT ) ROW
 INSERT INTO recharge (cell_no,city,name,price) VALUES (999090,"sl","fernando",30.0);
 
 LOAD DATA LOCAL INPATH '/opt/hadoop/resources/recharge.input' INTO TABLE recharge;
+
+hdfs dfs -put -f /opt/hadoop/resources/nbadataset.csv hdfs://hive-namenode:8020/user/hive/warehouse/nba.db/
+
+
+LOAD DATA INPATH '/user/hive/data/data.csv' INTO TABLE dataset;
+
+LOAD DATA INPATH 'hdfs://hive-namenode:8020/user/hive/warehouse/nba.db/nbadataset.csv' INTO TABLE dataset;
