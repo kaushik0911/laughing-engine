@@ -1,0 +1,88 @@
+version: "3"
+
+services:
+  spark-namenode:
+    image: ramilu90/hadoop-namenode
+    container_name: spark-namenode
+    platform: linux/amd64
+    ports:
+      - 9870:9870 # Namenode UI
+      - 9010:9000 # IPC port
+    environment:
+      - CLUSTER_NAME=test
+      - CORE_CONF_fs_defaultFS=hdfs://spark-namenode:9000
+    env_file:
+      - ./hadoop.env
+    mem_limit: 1g
+    volumes:
+      - ./resources:/opt/hadoop/resources
+
+  spark-datanode:
+    image: ramilu90/hadoop-datanode
+    container_name: spark-datanode
+    platform: linux/amd64
+    depends_on:
+      - spark-namenode
+    environment:
+      SERVICE_PRECONDITION: "spark-namenode:9870"
+      CORE_CONF_fs_defaultFS: hdfs://spark-namenode:9000
+    ports:
+      - "9864:9864"
+    env_file:
+      - ./hadoop.env
+    mem_limit: 1g
+
+  spark-resourcemanager:
+    image: ramilu90/hadoop-datanode
+    container_name: spark-resourcemanager
+    platform: linux/amd64
+    depends_on:
+      - spark-namenode
+    environment:
+      SERVICE_PRECONDITION: "spark-namenode:9000 spark-namenode:9870 spark-datanode:9864"
+    mem_limit: 512m
+    env_file:
+      - ./hadoop.env
+
+  spark-nodemanager:
+    image: ramilu90/hadoop-datanode
+    container_name: spark-nodemanager
+    platform: linux/amd64
+    environment:
+      SERVICE_PRECONDITION: "spark-namenode:9000 spark-namenode:9870 spark-datanode:9864 spark-resourcemanager:8088"
+    mem_limit: 512m
+    env_file:
+      - ./hadoop.env
+
+  spark-master:
+    image: ramilu90/spark-master
+    container_name: spark-master
+    platform: linux/amd64
+    volumes:
+      - ./resources:/opt/hadoop/resources
+    depends_on:
+      - spark-namenode
+      - spark-datanode
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+      - CORE_CONF_fs_defaultFS=hdfs://spark-namenode:9000
+
+  spark-worker:
+    image: ramilu90/spark-worker
+    container_name: spark-worker
+    platform: linux/amd64
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      - "SPARK_MASTER=spark://spark-master:7077"
+      - CORE_CONF_fs_defaultFS=hdfs://spark-namenode:9000
+
+
+networks:
+  default:
+    driver: bridge

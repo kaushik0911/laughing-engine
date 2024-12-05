@@ -69,3 +69,16 @@ hdfs dfs -put -f /opt/hadoop/resources/nbadataset.csv hdfs://hive-namenode:8020/
 LOAD DATA INPATH '/user/hive/data/data.csv' INTO TABLE dataset;
 
 LOAD DATA INPATH 'hdfs://hive-namenode:8020/user/hive/warehouse/nba.db/nbadataset.csv' INTO TABLE dataset;
+
+
+
+
+<!--  ------------- -->
+
+spark/bin/spark-shell --master spark://spark-master:7077 --conf "spark.eventLog.enabled=true" --conf "spark.eventLog.dir=/tmp/spark-events"
+
+
+val df = spark.read.csv("hdfs://spark-namenode:9000/nbadata/nbadataset.csv")
+
+
+park/bin/spark-submit --master local /opt/hadoop/resources/example.py
