@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import split, col, lag, coalesce, abs, sum as _sum, countDistinct, round, max, when, lit, first, last, desc
+from pyspark.sql.functions import split, col, lag, coalesce, abs, sum as _sum, countDistinct, round, max, when, lit, first, last, desc, row_number
 from pyspark.sql.window import Window
 
 # Initialize the SparkSession
@@ -48,44 +48,32 @@ df_load = df_load\
 # Filter rows where at least one of the columns is not NULL
 filtered_df = df_load.filter(~((df_load.HOMEDESCRIPTION.isNull()) & (df_load.VISITORDESCRIPTION.isNull())))
 
-# Calculate total score per game for home and visitor teams
-game_scores = (
-    filtered_df.groupBy("GAME_ID")
-    .agg(
-        max("HOME_SCORE").alias("HOME_TOTAL_SCORE"),
-        max("VISITOR_SCORE").alias("VISITOR_TOTAL_SCORE"),
-        first("PLAYER1_TEAM_ABBREVIATION").alias("HOME_TEAM"),
-        last("PLAYER1_TEAM_ABBREVIATION").alias("VISITOR_TEAM"),
-    )
+home_team = filtered_df.filter(col("HOMEDESCRIPTION").isNotNull()) \
+    .groupby("GAME_ID") \
+    .agg(first("PLAYER1_TEAM_ABBREVIATION").alias("HOME_TEAM"))
+
+visitor_team = filtered_df.filter(col("VISITORDESCRIPTION").isNotNull()) \
+    .groupby("GAME_ID") \
+    .agg(first("PLAYER1_TEAM_ABBREVIATION").alias("VISITOR_TEAM"))
+
+result_df = filtered_df.join(home_team, on="GAME_ID", how="left") \
+                        .join(visitor_team, on="GAME_ID", how="left")
+
+# Get the last event for each game
+window_spec = Window.partitionBy("GAME_ID").orderBy(desc("EVENTID"))
+last_event_df = result_df.withColumn("rank", row_number().over(window_spec)) \
+    .filter(col("rank") == 1) \
+    .drop("rank")
+
+# Determine the losing team
+losing_team_df = last_event_df.withColumn(
+    "LOSING_TEAM", when(col("VISITOR_SCORE") < col("HOME_SCORE"), col("VISITOR_TEAM")).otherwise(col("HOME_TEAM"))
 )
 
-game_scores.show()
-
-
-# Determine the winning and losing teams dynamically for each game
-game_results = game_scores.withColumn(
-    "WINNING_TEAM",
-    when(col("HOME_TOTAL_SCORE") > col("VISITOR_TOTAL_SCORE"), col("HOME_TEAM"))
-    .when(col("HOME_TOTAL_SCORE") < col("VISITOR_TOTAL_SCORE"), col("VISITOR_TEAM"))
-    .otherwise(lit(None)),
-).withColumn(
-    "LOSING_TEAM",
-    when(col("HOME_TOTAL_SCORE") < col("VISITOR_TOTAL_SCORE"), col("HOME_TEAM"))
-    .when(col("HOME_TOTAL_SCORE") > col("VISITOR_TOTAL_SCORE"), col("VISITOR_TEAM"))
-    .otherwise(lit(None)),
-)
-
-# -----------------
-"""
-
-# Count losses for each team across all games
-team_loss_counts = (
-    game_results.groupBy("LOSING_TEAM")
-    .count()
-    .withColumnRenamed("count", "TOTAL_LOSSES")
+# Count the total losses for each team
+loss_count_df = losing_team_df.groupBy("LOSING_TEAM").count() \
+    .withColumnRenamed("count", "TOTAL_LOSSES") \
     .orderBy(desc("TOTAL_LOSSES"))
-)
 
-print("Total matches lost by each team:")
-team_loss_counts.show()
-"""
+# Show the result
+loss_count_df.show()
