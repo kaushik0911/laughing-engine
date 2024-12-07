@@ -1,0 +1,845 @@
+﻿{
+  "paragraphs": [
+    {
+      "text": "# Prepare the dataset",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T16:17:59+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733587757195_1223129725",
+      "id": "paragraph_1733587757195_1223129725",
+      "dateCreated": "2024-12-07T16:09:17+0000",
+      "dateStarted": "2024-12-07T16:09:57+0000",
+      "dateFinished": "2024-12-07T16:10:21+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:15557"
+    },
+    {
+      "text": "%spark.pyspark\nfrom pyspark.sql import SparkSession\nfrom pyspark.sql.functions import split, col, lag, coalesce, abs, sum as _sum, countDistinct, round, max, when, lit, first, last, desc, row_number\nfrom pyspark.sql.window import Window\n\n# Initialize Spark session\nspark = SparkSession.builder \\\n    .appName(\"Predict Average Points in Spark MLlib\") \\\n    .getOrCreate()\n    \n# Load dataset\ndf_load = spark.read.csv(\"/opt/resources/nbadataset.csv\",\n    sep=',',\n    inferSchema=True,\n    header=True)\n    \ndf_load = df_load\\\n            .na\\\n            .drop(subset=[\"SCORE\"])\n\ndf_load = df_load\\\n                .withColumn(\"VISITOR_SCORE\", split(col(\"SCORE\"), \" - \")\\\n                    .getItem(0).cast(\"int\"))\\\n                .withColumn(\"HOME_SCORE\", split(col(\"SCORE\"), \" - \")\\\n                    .getItem(1).cast(\"int\"))\n                    \n# Define a window partitioned by GAME_ID and ordered by EVENTID\nwindow_spec = Window.partitionBy(\"GAME_ID\").orderBy(\"EVENTID\")\n\n# Add columns for the previous row's VISITOR_SCORE and HOME_SCORE within each game\ndf_load = df_load\\\n                .withColumn(\"PREV_VISITOR_SCORE\", coalesce(lag(\"VISITOR_SCORE\").over(window_spec), col(\"VISITOR_SCORE\") * 0)) \\\n                .withColumn(\"PREV_HOME_SCORE\", coalesce(lag(\"HOME_SCORE\").over(window_spec), col(\"HOME_SCORE\") * 0))\n\n# Calculate the differences\ndf_load = df_load\\\n                .withColumn(\"VISITOR_SCORE_DIFF\", (col(\"VISITOR_SCORE\") - col(\"PREV_VISITOR_SCORE\")).cast(\"int\")) \\\n                .withColumn(\"HOME_SCORE_DIFF\", (col(\"HOME_SCORE\") - col(\"PREV_HOME_SCORE\")).cast(\"int\"))\n\ndf_load = df_load\\\n                .withColumn(\"SHOOT\", abs(col(\"VISITOR_SCORE_DIFF\") - col(\"HOME_SCORE_DIFF\")))\n\n# The total number of matches lost by each team.\n\n# Filter rows where at least one of the columns is not NULL\nfiltered_df = df_load.filter(~((df_load.HOMEDESCRIPTION.isNull()) & (df_load.VISITORDESCRIPTION.isNull())))\n\nhome_team = filtered_df.filter(col(\"HOMEDESCRIPTION\").isNotNull()) \\\n    .groupby(\"GAME_ID\") \\\n    .agg(first(\"PLAYER1_TEAM_ABBREVIATION\").alias(\"HOME_TEAM\"))\n\nvisitor_team = filtered_df.filter(col(\"VISITORDESCRIPTION\").isNotNull()) \\\n    .groupby(\"GAME_ID\") \\\n    .agg(first(\"PLAYER1_TEAM_ABBREVIATION\").alias(\"VISITOR_TEAM\"))\n\nresult_df = filtered_df.join(home_team, on=\"GAME_ID\", how=\"left\") \\\n                        .join(visitor_team, on=\"GAME_ID\", how=\"left\")\n\n# Show the result\nresult_df = result_df.select(\"GAME_ID\", \"EVENTID\", \"PLAYER1_ID\", \"PLAYER1_NAME\", \"PLAYER1_TEAM_ABBREVIATION\", \"SHOOT\", \"VISITOR_TEAM\", \"HOME_TEAM\", \"VISITOR_SCORE\", \"HOME_SCORE\")\n\n\nresult_df.show()\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T21:08:22+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+-------+----------+----------------+-------------------------+-----+------------+---------+-------------+----------+\n| GAME_ID|EVENTID|PLAYER1_ID|    PLAYER1_NAME|PLAYER1_TEAM_ABBREVIATION|SHOOT|VISITOR_TEAM|HOME_TEAM|VISITOR_SCORE|HOME_SCORE|\n+--------+-------+----------+----------------+-------------------------+-----+------------+---------+-------------+----------+\n|20000716|      7|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|            2|         0|\n|20000716|      8|      1000|Shandon Anderson|                      HOU|    2|         WAS|      HOU|            2|         2|\n|20000716|     10|       436|    Juwan Howard|                      WAS|    1|         WAS|      HOU|            3|         2|\n|20000716|     14|        63|   Michael Smith|                      WAS|    2|         WAS|      HOU|            5|         2|\n|20000716|     28|      1000|Shandon Anderson|                      HOU|    1|         WAS|      HOU|            5|         3|\n|20000716|     31|      1000|Shandon Anderson|                      HOU|    1|         WAS|      HOU|            5|         4|\n|20000716|     32|      1000|Shandon Anderson|                      HOU|    1|         WAS|      HOU|            5|         5|\n|20000716|     35|      1883|   Steve Francis|                      HOU|    2|         WAS|      HOU|            5|         7|\n|20000716|     43|        43|   Chris Whitney|                      WAS|    2|         WAS|      HOU|            7|         7|\n|20000716|     57|        63|   Michael Smith|                      WAS|    2|         WAS|      HOU|            9|         7|\n|20000716|     59|      1883|   Steve Francis|                      HOU|    2|         WAS|      HOU|            9|         9|\n|20000716|     62|      1000|Shandon Anderson|                      HOU|    2|         WAS|      HOU|            9|        11|\n|20000716|     63|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|           11|        11|\n|20000716|     65|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|           13|        11|\n|20000716|     68|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|           15|        11|\n|20000716|     72|       165| Hakeem Olajuwon|                      HOU|    2|         WAS|      HOU|           15|        13|\n|20000716|     76|      1751|    Jahidi White|                      WAS|    2|         WAS|      HOU|           17|        13|\n|20000716|     77|      1883|   Steve Francis|                      HOU|    3|         WAS|      HOU|           17|        16|\n|20000716|     84|      1000|Shandon Anderson|                      HOU|    2|         WAS|      HOU|           17|        18|\n|20000716|     91|       436|    Juwan Howard|                      WAS|    2|         WAS|      HOU|           19|        18|\n+--------+-------+----------+----------------+-------------------------+-----+------------+---------+-------------+----------+\nonly showing top 20 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=197",
+              "$$hashKey": "object:15823"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=198",
+              "$$hashKey": "object:15824"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=199",
+              "$$hashKey": "object:15825"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=200",
+              "$$hashKey": "object:15826"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=201",
+              "$$hashKey": "object:15827"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733587797461_738377010",
+      "id": "paragraph_1733587797461_738377010",
+      "dateCreated": "2024-12-07T16:09:57+0000",
+      "dateStarted": "2024-12-07T21:08:22+0000",
+      "dateFinished": "2024-12-07T21:08:30+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:15558"
+    },
+    {
+      "text": "%spark.pyspark\nresult_df = result_df.withColumn(\n    \"OPPONENT_TEAM\", when(col(\"PLAYER1_TEAM_ABBREVIATION\") == col(\"HOME_TEAM\"), col(\"VISITOR_TEAM\")).otherwise(col(\"HOME_TEAM\"))\n)\n\nresult_df.show()",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T21:27:29+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+-------+----------+----------------+-------------------------+-----+------------+---------+-------------+----------+-------------+\n| GAME_ID|EVENTID|PLAYER1_ID|    PLAYER1_NAME|PLAYER1_TEAM_ABBREVIATION|SHOOT|VISITOR_TEAM|HOME_TEAM|VISITOR_SCORE|HOME_SCORE|OPPONENT_TEAM|\n+--------+-------+----------+----------------+-------------------------+-----+------------+---------+-------------+----------+-------------+\n|20000716|      7|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|            2|         0|          HOU|\n|20000716|      8|      1000|Shandon Anderson|                      HOU|    2|         WAS|      HOU|            2|         2|          WAS|\n|20000716|     10|       436|    Juwan Howard|                      WAS|    1|         WAS|      HOU|            3|         2|          HOU|\n|20000716|     14|        63|   Michael Smith|                      WAS|    2|         WAS|      HOU|            5|         2|          HOU|\n|20000716|     28|      1000|Shandon Anderson|                      HOU|    1|         WAS|      HOU|            5|         3|          WAS|\n|20000716|     31|      1000|Shandon Anderson|                      HOU|    1|         WAS|      HOU|            5|         4|          WAS|\n|20000716|     32|      1000|Shandon Anderson|                      HOU|    1|         WAS|      HOU|            5|         5|          WAS|\n|20000716|     35|      1883|   Steve Francis|                      HOU|    2|         WAS|      HOU|            5|         7|          WAS|\n|20000716|     43|        43|   Chris Whitney|                      WAS|    2|         WAS|      HOU|            7|         7|          HOU|\n|20000716|     57|        63|   Michael Smith|                      WAS|    2|         WAS|      HOU|            9|         7|          HOU|\n|20000716|     59|      1883|   Steve Francis|                      HOU|    2|         WAS|      HOU|            9|         9|          WAS|\n|20000716|     62|      1000|Shandon Anderson|                      HOU|    2|         WAS|      HOU|            9|        11|          WAS|\n|20000716|     63|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|           11|        11|          HOU|\n|20000716|     65|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|           13|        11|          HOU|\n|20000716|     68|      1888|Richard Hamilton|                      WAS|    2|         WAS|      HOU|           15|        11|          HOU|\n|20000716|     72|       165| Hakeem Olajuwon|                      HOU|    2|         WAS|      HOU|           15|        13|          WAS|\n|20000716|     76|      1751|    Jahidi White|                      WAS|    2|         WAS|      HOU|           17|        13|          HOU|\n|20000716|     77|      1883|   Steve Francis|                      HOU|    3|         WAS|      HOU|           17|        16|          WAS|\n|20000716|     84|      1000|Shandon Anderson|                      HOU|    2|         WAS|      HOU|           17|        18|          WAS|\n|20000716|     91|       436|    Juwan Howard|                      WAS|    2|         WAS|      HOU|           19|        18|          HOU|\n+--------+-------+----------+----------------+-------------------------+-----+------------+---------+-------------+----------+-------------+\nonly showing top 20 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=202",
+              "$$hashKey": "object:15901"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=203",
+              "$$hashKey": "object:15902"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=204",
+              "$$hashKey": "object:15903"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733605746328_1909162526",
+      "id": "paragraph_1733605746328_1909162526",
+      "dateCreated": "2024-12-07T21:09:06+0000",
+      "dateStarted": "2024-12-07T21:27:29+0000",
+      "dateFinished": "2024-12-07T21:27:35+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:15559"
+    },
+    {
+      "text": "%spark.pyspark\n# Get the last event for each game\nwindow_spec = Window.partitionBy(\"GAME_ID\").orderBy(desc(\"EVENTID\"))\nlast_event_df = result_df.withColumn(\"rank\", row_number().over(window_spec)) \\\n    .filter(col(\"rank\") == 1) \\\n    .drop(\"rank\")\n\n# Determine the losing team\nhome_team_df = last_event_df.withColumn(\n    \"HOME_TEAM_WON\", when(col(\"VISITOR_SCORE\") < col(\"HOME_SCORE\"), 1).otherwise(0)\n)\n\nhome_team_df = home_team_df.select('GAME_ID', 'HOME_TEAM_WON')\n\nhome_team_df.show()\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T21:30:45+0000",
+      "progress": 50,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+-------------+\n| GAME_ID|HOME_TEAM_WON|\n+--------+-------------+\n|20000716|            1|\n|20000961|            1|\n|20001107|            0|\n|20000279|            1|\n|20000281|            0|\n|20000517|            1|\n|20000923|            1|\n|20000051|            0|\n|20000079|            0|\n|20000485|            1|\n|20000369|            1|\n|20000627|            0|\n|20000630|            0|\n|20000803|            0|\n|20001140|            1|\n|20000135|            1|\n|20000174|            1|\n|20000247|            1|\n|20000571|            1|\n|20000621|            0|\n+--------+-------------+\nonly showing top 20 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=214",
+              "$$hashKey": "object:16334"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=213",
+              "$$hashKey": "object:16335"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=215",
+              "$$hashKey": "object:16336"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=216",
+              "$$hashKey": "object:16337"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733588480260_1890417615",
+      "id": "paragraph_1733588480260_1890417615",
+      "dateCreated": "2024-12-07T16:21:20+0000",
+      "dateStarted": "2024-12-07T21:30:45+0000",
+      "dateFinished": "2024-12-07T21:30:50+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:15560"
+    },
+    {
+      "text": "%spark.pyspark\n# Join the datasets on GAME_ID\nresult = result_df.join(home_team_df, on=\"GAME_ID\", how=\"left\")\n\n# result.select(\"GAME_ID\", \"EVENTID\", \"PLAYER1_NAME\", \"PLAYER1_TEAM_ABBREVIATION\", \"VISITOR_TEAM\", \"HOME_TEAM_WON\").show()\n\nwe_won = result.withColumn(\"PLAYER_TEAM_WON\", when((col(\"HOME_TEAM_WON\") == 1) & (col(\"VISITOR_TEAM\") == col(\"PLAYER1_TEAM_ABBREVIATION\")), 0).otherwise(1))\n\nwe_won = we_won.select(\"GAME_ID\", \"EVENTID\", \"PLAYER1_NAME\", \"PLAYER1_ID\", \"PLAYER1_TEAM_ABBREVIATION\", \"OPPONENT_TEAM\", \"PLAYER_TEAM_WON\", \"SHOOT\")\\\n            .withColumnRenamed(\"PLAYER1_NAME\",\"PLAYER_NAME\")\\\n            .withColumnRenamed(\"PLAYER1_TEAM_ABBREVIATION\",\"PLAYER_TEAM\")\\\n            .withColumnRenamed(\"PLAYER1_ID\",\"PLAYER_ID\")\n            \nwe_won.show()",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T21:31:59+0000",
+      "progress": 100,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+-------+----------------+---------+-----------+-------------+---------------+-----+\n| GAME_ID|EVENTID|     PLAYER_NAME|PLAYER_ID|PLAYER_TEAM|OPPONENT_TEAM|PLAYER_TEAM_WON|SHOOT|\n+--------+-------+----------------+---------+-----------+-------------+---------------+-----+\n|20000716|      7|Richard Hamilton|     1888|        WAS|          HOU|              0|    2|\n|20000716|      8|Shandon Anderson|     1000|        HOU|          WAS|              1|    2|\n|20000716|     10|    Juwan Howard|      436|        WAS|          HOU|              0|    1|\n|20000716|     14|   Michael Smith|       63|        WAS|          HOU|              0|    2|\n|20000716|     28|Shandon Anderson|     1000|        HOU|          WAS|              1|    1|\n|20000716|     31|Shandon Anderson|     1000|        HOU|          WAS|              1|    1|\n|20000716|     32|Shandon Anderson|     1000|        HOU|          WAS|              1|    1|\n|20000716|     35|   Steve Francis|     1883|        HOU|          WAS|              1|    2|\n|20000716|     43|   Chris Whitney|       43|        WAS|          HOU|              0|    2|\n|20000716|     57|   Michael Smith|       63|        WAS|          HOU|              0|    2|\n|20000716|     59|   Steve Francis|     1883|        HOU|          WAS|              1|    2|\n|20000716|     62|Shandon Anderson|     1000|        HOU|          WAS|              1|    2|\n|20000716|     63|Richard Hamilton|     1888|        WAS|          HOU|              0|    2|\n|20000716|     65|Richard Hamilton|     1888|        WAS|          HOU|              0|    2|\n|20000716|     68|Richard Hamilton|     1888|        WAS|          HOU|              0|    2|\n|20000716|     72| Hakeem Olajuwon|      165|        HOU|          WAS|              1|    2|\n|20000716|     76|    Jahidi White|     1751|        WAS|          HOU|              0|    2|\n|20000716|     77|   Steve Francis|     1883|        HOU|          WAS|              1|    3|\n|20000716|     84|Shandon Anderson|     1000|        HOU|          WAS|              1|    2|\n|20000716|     91|    Juwan Howard|      436|        WAS|          HOU|              0|    2|\n+--------+-------+----------------+---------+-----------+-------------+---------------+-----+\nonly showing top 20 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=221",
+              "$$hashKey": "object:16636"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=222",
+              "$$hashKey": "object:16637"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=223",
+              "$$hashKey": "object:16638"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=224",
+              "$$hashKey": "object:16639"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=225",
+              "$$hashKey": "object:16640"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733589607525_873750904",
+      "id": "paragraph_1733589607525_873750904",
+      "dateCreated": "2024-12-07T16:40:07+0000",
+      "dateStarted": "2024-12-07T21:31:59+0000",
+      "dateFinished": "2024-12-07T21:32:07+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:15561"
+    },
+    {
+      "text": "%spark.pyspark\n\n\n# Aggregate the sum of SHOOT per player per game\nshoot_sum = we_won.groupBy(\"GAME_ID\", \"PLAYER_NAME\", \"PLAYER_ID\", \"PLAYER_TEAM\", \"OPPONENT_TEAM\", \"PLAYER_TEAM_WON\").agg(_sum(\"SHOOT\").alias(\"PLAYER_POINTS\"))\n\nshoot_sum.show()",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T22:01:21+0000",
+      "progress": 88,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "+--------+----------------+---------+-----------+-------------+---------------+-------------+\n| GAME_ID|     PLAYER_NAME|PLAYER_ID|PLAYER_TEAM|OPPONENT_TEAM|PLAYER_TEAM_WON|PLAYER_POINTS|\n+--------+----------------+---------+-----------+-------------+---------------+-------------+\n|20000716|Richard Hamilton|     1888|        WAS|          HOU|              0|           24|\n|20000716|Shandon Anderson|     1000|        HOU|          WAS|              1|           17|\n|20000716|    Juwan Howard|      436|        WAS|          HOU|              0|           15|\n|20000716|   Michael Smith|       63|        WAS|          HOU|              0|            5|\n|20000716|   Steve Francis|     1883|        HOU|          WAS|              1|           29|\n|20000716|   Chris Whitney|       43|        WAS|          HOU|              0|            4|\n|20000716| Hakeem Olajuwon|      165|        HOU|          WAS|              1|           15|\n|20000716|    Jahidi White|     1751|        WAS|          HOU|              0|            5|\n|20000716|    Tyrone Nesby|     1838|        WAS|          HOU|              0|           10|\n|20000716|  Mitch Richmond|      782|        WAS|          HOU|              0|           12|\n|20000716|  Cuttino Mobley|     1749|        HOU|          WAS|              1|           16|\n|20000716|     Gerard King|     1562|        WAS|          HOU|              0|            4|\n|20000716|   Walt Williams|     1005|        HOU|          WAS|              1|            4|\n|20000716|  Moochie Norris|      983|        HOU|          WAS|              1|            2|\n|20000716|  Maurice Taylor|     1508|        HOU|          WAS|              1|           16|\n|20000716|    Popeye Jones|      461|        WAS|          HOU|              0|           10|\n|20000961|   Wesley Person|      445|        CLE|          MIN|              0|           13|\n|20000961|   Reggie Slater|     1073|        MIN|          CLE|              1|            4|\n|20000961|Wally Szczerbiak|     1887|        MIN|          CLE|              1|           10|\n|20000961|   Matt Harpring|     1723|        CLE|          MIN|              0|           10|\n+--------+----------------+---------+-----------+-------------+---------------+-------------+\nonly showing top 20 rows\n\n"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=278",
+              "$$hashKey": "object:23050"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=279",
+              "$$hashKey": "object:23051"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=276",
+              "$$hashKey": "object:23052"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=277",
+              "$$hashKey": "object:23053"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=280",
+              "$$hashKey": "object:23054"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733589880656_215699343",
+      "id": "paragraph_1733589880656_215699343",
+      "dateCreated": "2024-12-07T16:44:40+0000",
+      "dateStarted": "2024-12-07T22:01:21+0000",
+      "dateFinished": "2024-12-07T22:01:29+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:15562"
+    },
+    {
+      "text": "%spark.pyspark\nfrom pyspark.ml.feature import StringIndexer, VectorAssembler\nfrom pyspark.ml.regression import LinearRegression\nfrom pyspark.ml.evaluation import RegressionEvaluator\n\n# Step 1: Index Categorical Features\nindexer_name = StringIndexer(inputCol=\"PLAYER_NAME\", outputCol=\"PLAYER_NAME_INDEX\")\nindexer_team = StringIndexer(inputCol=\"PLAYER_TEAM\", outputCol=\"PLAYER_TEAM_INDEX\")\nindexer_opponent = StringIndexer(inputCol=\"OPPONENT_TEAM\", outputCol=\"OPPONENT_TEAM_INDEX\")\n\nshoot_sum = indexer_name.fit(shoot_sum).transform(shoot_sum)\nshoot_sum = indexer_team.fit(shoot_sum).transform(shoot_sum)\nshoot_sum = indexer_opponent.fit(shoot_sum).transform(shoot_sum)\n\n# Step 2: Assemble Features\nassembler = VectorAssembler(\n    inputCols=[\"PLAYER_NAME_INDEX\", \"PLAYER_TEAM_INDEX\", \"OPPONENT_TEAM_INDEX\", \"PLAYER_TEAM_WON\"],\n    outputCol=\"features\"\n)\nshoot_sum = assembler.transform(shoot_sum)\n\n# Step 3: Train-Test Split\ntrain_data, test_data = shoot_sum.randomSplit([0.8, 0.2], seed=42)\n\n# Step 4: Train the Model\nlr = LinearRegression(featuresCol=\"features\", labelCol=\"PLAYER_POINTS\")\nmodel = lr.fit(train_data)\n\n# Step 5: Evaluate the Model\npredictions = model.transform(test_data)\nevaluator = RegressionEvaluator(\n    labelCol=\"PLAYER_POINTS\", predictionCol=\"prediction\", metricName=\"rmse\"\n)\n\nrmse = evaluator.evaluate(predictions)\nprint(f\"Root Mean Squared Error (RMSE): {rmse}\")\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T22:01:32+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=284",
+              "$$hashKey": "object:27998"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=283",
+              "$$hashKey": "object:27999"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=282",
+              "$$hashKey": "object:28000"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=281",
+              "$$hashKey": "object:28001"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=285",
+              "$$hashKey": "object:28002"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=286",
+              "$$hashKey": "object:28003"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=287",
+              "$$hashKey": "object:28004"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=288",
+              "$$hashKey": "object:28005"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=289",
+              "$$hashKey": "object:28006"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=290",
+              "$$hashKey": "object:28007"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=291",
+              "$$hashKey": "object:28008"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=292",
+              "$$hashKey": "object:28009"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=293",
+              "$$hashKey": "object:28010"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=294",
+              "$$hashKey": "object:28011"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=295",
+              "$$hashKey": "object:28012"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=297",
+              "$$hashKey": "object:28013"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=296",
+              "$$hashKey": "object:28014"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=298",
+              "$$hashKey": "object:28015"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=299",
+              "$$hashKey": "object:28016"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=300",
+              "$$hashKey": "object:28017"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=304",
+              "$$hashKey": "object:28018"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=302",
+              "$$hashKey": "object:28019"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=301",
+              "$$hashKey": "object:28020"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=303",
+              "$$hashKey": "object:28021"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=305",
+              "$$hashKey": "object:28022"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=306",
+              "$$hashKey": "object:28023"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=307",
+              "$$hashKey": "object:28024"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=308",
+              "$$hashKey": "object:28025"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=309",
+              "$$hashKey": "object:28026"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=311",
+              "$$hashKey": "object:28027"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=312",
+              "$$hashKey": "object:28028"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=313",
+              "$$hashKey": "object:28029"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=310",
+              "$$hashKey": "object:28030"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=314",
+              "$$hashKey": "object:28031"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=315",
+              "$$hashKey": "object:28032"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=316",
+              "$$hashKey": "object:28033"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=318",
+              "$$hashKey": "object:28034"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=319",
+              "$$hashKey": "object:28035"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=317",
+              "$$hashKey": "object:28036"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=320",
+              "$$hashKey": "object:28037"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=321",
+              "$$hashKey": "object:28038"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=322",
+              "$$hashKey": "object:28039"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=323",
+              "$$hashKey": "object:28040"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=324",
+              "$$hashKey": "object:28041"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=325",
+              "$$hashKey": "object:28042"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733604866241_2014903385",
+      "id": "paragraph_1733604866241_2014903385",
+      "dateCreated": "2024-12-07T20:54:26+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:15563",
+      "dateFinished": "2024-12-07T22:02:48+0000",
+      "dateStarted": "2024-12-07T22:01:32+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "Root Mean Squared Error (RMSE): 6.905321037038209\n"
+          }
+        ]
+      }
+    },
+    {
+      "text": "%spark.pyspark\n# Step 6: Predict for a Specific Player\n# Example: Allen Iverson playing against Los Angeles Lakers\n# player_name_index = indexer_name.fit(shoot_sum).transform(\n#     spark.createDataFrame([(\"Allen Iverson\",)], [\"PLAYER_NAME\"])\n# ).select(\"PLAYER_NAME_INDEX\").first()[0]\n\nplayer_name_index = shoot_sum.filter(shoot_sum.PLAYER_NAME == \"Allen Iverson\").select(\"PLAYER_NAME_INDEX\").first()[0]\nplayer_team_index = shoot_sum.filter(shoot_sum.PLAYER_TEAM == \"PHI\").select(\"PLAYER_TEAM_INDEX\").first()[0]\nopponent_team_index = shoot_sum.filter(shoot_sum.OPPONENT_TEAM == \"LAL\").select(\"OPPONENT_TEAM_INDEX\").first()[0]\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T22:12:45+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=337",
+              "$$hashKey": "object:29715"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=338",
+              "$$hashKey": "object:29716"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=339",
+              "$$hashKey": "object:29717"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=340",
+              "$$hashKey": "object:29718"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=341",
+              "$$hashKey": "object:29719"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=342",
+              "$$hashKey": "object:29720"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=343",
+              "$$hashKey": "object:29721"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=344",
+              "$$hashKey": "object:29722"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=345",
+              "$$hashKey": "object:29723"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=346",
+              "$$hashKey": "object:29724"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=347",
+              "$$hashKey": "object:29725"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=348",
+              "$$hashKey": "object:29726"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=349",
+              "$$hashKey": "object:29727"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=350",
+              "$$hashKey": "object:29728"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=351",
+              "$$hashKey": "object:29729"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=352",
+              "$$hashKey": "object:29730"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=353",
+              "$$hashKey": "object:29731"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733608703302_1347137006",
+      "id": "paragraph_1733608703302_1347137006",
+      "dateCreated": "2024-12-07T21:58:23+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:16838",
+      "dateFinished": "2024-12-07T22:13:01+0000",
+      "dateStarted": "2024-12-07T22:12:45+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": []
+      }
+    },
+    {
+      "text": "%spark.pyspark\nnew_data = spark.createDataFrame([\n    (player_name_index, player_team_index, opponent_team_index, 1)  # Assume team wins\n], [\"PLAYER_NAME_INDEX\", \"PLAYER_TEAM_INDEX\", \"OPPONENT_TEAM_INDEX\", \"PLAYER_TEAM_WON\"])\n\nnew_data = assembler.transform(new_data)\nprediction = model.transform(new_data)\npredicted_points = prediction.select(\"prediction\").first()[0]\nprint(f\"Expected points: {predicted_points:.2f}\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T22:13:07+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/scala",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "SPARK JOB",
+          "tooltip": "View in Spark web UI",
+          "group": "spark",
+          "values": [
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=354",
+              "$$hashKey": "object:29916"
+            },
+            {
+              "jobUrl": "http://297cb59e7752:4040/jobs/job?id=355",
+              "$$hashKey": "object:29917"
+            }
+          ],
+          "interpreterSettingId": "spark"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733608975811_61241577",
+      "id": "paragraph_1733608975811_61241577",
+      "dateCreated": "2024-12-07T22:02:55+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:28229",
+      "dateFinished": "2024-12-07T22:13:12+0000",
+      "dateStarted": "2024-12-07T22:13:08+0000",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "Expected points: 11.86\n"
+          }
+        ]
+      }
+    },
+    {
+      "text": "%spark.pyspark\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-12-07T22:13:08+0000",
+      "progress": 0,
+      "config": {
+        "colWidth": 12,
+        "fontSize": 9,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "editorMode": "ace/mode/python"
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1733609588032_209993514",
+      "id": "paragraph_1733609588032_209993514",
+      "dateCreated": "2024-12-07T22:13:08+0000",
+      "status": "READY",
+      "focus": true,
+      "$$hashKey": "object:29806"
+    }
+  ],
+  "name": "Task 3 - Performing Machine Learning model",
+  "id": "2KDPKKH8V",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.9.0",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/Task 3 - Performing Machine Learning model"
+}
