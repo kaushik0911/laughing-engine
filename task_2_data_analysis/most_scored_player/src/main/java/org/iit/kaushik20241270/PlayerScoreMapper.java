@@ -17,37 +17,34 @@ public class PlayerScoreMapper extends Mapper<Object, Text, Text, IntWritable> {
         String[] fields = line.split(",");
 
         // Skip the header row based on its length or content
-        if (fields[0].equalsIgnoreCase("GAME_ID")) {
+        if (fields[0].equalsIgnoreCase("EVENTID")) {
             return;
         }
 
         try {
-            // Ensure we have enough fields and extract relevant columns
-            if (fields.length >= 3) { // Adjust if needed
-                String gameId = fields[0];
-                String homeCommentary = fields[1];
-                // String visitorCommentary = fields[26];
-                String player1Name = fields[2];
+            String gameId = fields[2];
+            String homeCommentary = fields[3];
+            String visitorCommentary = fields[26];
+            String player1Name = fields[7];
 
-                String commentary;
+            String commentary;
 
-                if (!homeCommentary.isEmpty() && !player1Name.isEmpty()) {
-                    commentary = homeCommentary;
-                } else {
-                   return;
-                }
-
-                int totalScore = PlayerTotalPointsExtractor.extractTotalPoints(commentary);
-
-                // Emit the game id, player's name and score
-                playerName.set(gameId + "," + player1Name);
-                score.set(totalScore);
-                context.write(playerName, score);
-
+            if (!homeCommentary.isEmpty() && !player1Name.isEmpty()) {
+                commentary = homeCommentary;
+            } else if (!visitorCommentary.isEmpty() && !player1Name.isEmpty()) {
+                commentary = visitorCommentary;
+            } else {
+               return;
             }
+
+            int totalScore = PlayerTotalPointsExtractor.extractTotalPoints(commentary);
+
+            // Emit the game id, player's name and score
+            playerName.set(gameId + "," + player1Name);
+            score.set(totalScore);
+            context.write(playerName, score);
         } catch (Exception e) {
             // Handle malformed records (optional)
-            e.printStackTrace();
         }
     }
 }

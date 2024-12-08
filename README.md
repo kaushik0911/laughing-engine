@@ -32,7 +32,7 @@ hdfs dfs -ls /nbadata/output/TopPlayerJob
 hdfs dfs -rm -R /nbadata/output/TopPlayerJob
 
 
-yarn jar /opt/hadoop/resources/most_scored_player-1.0-SNAPSHOT.jar org.iit.kaushik20241270.TopPlayerJob /nbadata/nbadatasettest.csv /nbadata/output/TopPlayerJob
+yarn jar /opt/hadoop/resources/most_scored_player-1.0-SNAPSHOT.jar org.iit.kaushik20241270.TopPlayerJob /nbadata/nbadataset.csv /nbadata/output/TopPlayerJob
 
 
 Allen Iverson   1249
