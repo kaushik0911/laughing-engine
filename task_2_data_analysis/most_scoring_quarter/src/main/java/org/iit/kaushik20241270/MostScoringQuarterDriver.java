@@ -17,21 +17,20 @@ public class MostScoringQuarterDriver {
 
         // Set up the configuration and job
         Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Most Scoring Quarter");
+        Job job = Job.getInstance(conf, "Basketball Analysis");
 
         job.setJarByClass(MostScoringQuarterDriver.class);
         job.setMapperClass(MostScoringQuarterMapper.class);
         job.setReducerClass(MostScoringQuarterReducer.class);
 
-        // Set output key and value classes
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Text.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
 
-        // Set input and output paths
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-        // Submit the job and wait for completion
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
