@@ -31,6 +31,10 @@ hdfs dfs -ls /nbadata/output/TopPlayerJob
 
 hdfs dfs -rm -R /nbadata/output/TopPlayerJob
 
+hdfs dfs -cat /nbadata/output/MostScoringQuarterDriver/part-r-00000
+
+
+hdfs dfs -rm -R /nbadata/output
 
 yarn jar /opt/hadoop/resources/most_scored_player-1.0-SNAPSHOT.jar org.iit.kaushik20241270.TopPlayerJob /nbadata/nbadataset.csv /nbadata/output/TopPlayerJob
 

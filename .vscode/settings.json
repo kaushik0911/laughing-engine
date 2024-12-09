@@ -8,5 +8,6 @@
         "nodemanager",
         "ramilu",
         "resourcemanager"
-    ]
+    ],
+    "livePreview.defaultPreviewPath": "/dashboard/index.html"
 }
