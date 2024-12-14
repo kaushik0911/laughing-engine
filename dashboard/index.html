@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horizontal Stacked Bar Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        body {
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        table, td {
+            border-width: 2px;
+            border-style: dashed;
+        }
+
+        .tr-gold {
+            color: white !important;
+            background-color: goldenrod !important;
+        }
+
+        .tr-silver {
+            color: white !important;
+            background-color: silver !important;
+        }
+
+        .tr-bronze {
+            color: white !important;
+            background-color: #8b2b2b !important;
+        }
+    </style>
+</head>
+<body>
+    <h3 class="text-center">NBA Dashboard</h4>
+    <table>
+        <tr>
+            <td><h4 class="text-center">Team Performance</h4></td>
+            <td><h4 class="text-center">Leaderboard</h4></td>
+        </tr>
+        <tr>
+            <td style="width: 100%">
+                <div style="padding: 20px;">
+                    <canvas id="stackedBarChart"></canvas>
+                </div>
+            </td>
+            <td style="width: 100%">
+                <div style="padding: 20px;">
+                    <table class="table text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Rank</th>
+                                <th>Team Name</th>
+                                <th>Total Won</th>
+                                <th>Margin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr">
+                                <td class="tr-gold">1</td>
+                                <td class="tr-gold">Miami Heat</td>
+                                <td class="tr-gold">34</td>
+                                <td class="tr-gold"></td>
+                            </tr>
+                            <tr>
+                                <td class="tr-silver">2</td>
+                                <td class="tr-silver">Philadelphia 76ers</td>
+                                <td class="tr-silver">23</td>
+                                <td class="tr-silver">-11</td>
+                            </tr>
+                            <tr>
+                                <td class="tr-bronze">3</td>
+                                <td class="tr-bronze">Charlotte Hornets</td>
+                                <td class="tr-bronze">21</td>
+                                <td class="tr-bronze">-13</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>Seattle SuperSonics</td>
+                                <td>11</td>
+                                <td>-23</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>Phoenix Suns</td>
+                                <td>5</td>
+                                <td>-29</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <h4 class="text-center">Percentage of Players</h4>
+                <h5 class="text-center">(40 points or more in a game)</h5>
+            </td>
+            <td>
+                <h4 class="text-center">Most Scoring Quarter</h4>
+                <h5 class="text-center">(Across four quarters)</h5>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div style="width: 90%; margin: 0 auto; margin-left: 30px;">
+                    <canvas id="correlationMap"></canvas>
+                </div>
+            </td>
+            <td>
+                <div style="width: 100%; margin: 0 auto; padding: 20px;">
+                    <canvas id="bubbleChart"></canvas>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <script>
+        // Stacked Bar Chart
+        const stackedBarCtx = document.getElementById('stackedBarChart').getContext('2d');
+        new Chart(stackedBarCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Miami Heat', 'Philadelphia 76ers', 'Charlotte Hornets', 'Seattle SuperSonics', 'Phoenix Suns'],
+                datasets: [
+                    { label: 'Total Won', data: [34, 23, 21, 11, 5], backgroundColor: 'rgba(55, 170, 121, 0.9)' },
+                    { label: 'Total Lost', data: [12, 20, 12, 12, 32], backgroundColor: 'rgba(197, 78, 106, 0.9)' }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                indexAxis: 'y',
+                scales: {
+                    x: { stacked: true, beginAtZero: true },
+                    y: { stacked: true }
+                }
+            }
+        });
+
+        // Correlation Matrix
+        const correlationCtx = document.getElementById('correlationMap').getContext('2d');
+        new Chart(correlationCtx, {
+            type: 'matrix',
+            data: {
+                datasets: [{
+                    label: 'Correlation Matrix',
+                    data: [
+                        { x: 'Miami', y: 'Miami', v: 0 },
+                        { x: 'Miami', y: 'Philadelphia', v: 1.2 },
+                        { x: 'Miami', y: 'Charlotte', v: 1.7 },
+                        { x: 'Philadelphia', y: 'Miami', v: 0.4 },
+                        { x: 'Philadelphia', y: 'Philadelphia', v: 0 },
+                        { x: 'Philadelphia', y: 'Charlotte', v: 0.8 },
+                        { x: 'Charlotte', y: 'Miami', v: 2.2 },
+                        { x: 'Charlotte', y: 'Philadelphia', v: 2.9 },
+                        { x: 'Charlotte', y: 'Charlotte', v: 0 }
+                    ],
+                    backgroundColor: ctx => `rgba(75, 192, 192, ${Math.abs(ctx.raw.v) / 3})`
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { type: 'category', labels: ['Miami', 'Philadelphia', 'Charlotte'], title: { display: true, text: 'Home Team' } },
+                    y: { type: 'category', labels: ['Miami', 'Philadelphia', 'Charlotte'], title: { display: true, text: 'Visitor Team' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (tooltipItem) => {
+                                const { x, y, v } = tooltipItem.raw; // Extract raw values
+                                return `Home: ${x}, Visitor: ${y}, Percentage: ${v.toFixed(2)}%`;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: false,
+                        text: '',
+                        padding: { top: 0, left: 0, right: 0, bottom: 0 }
+                    }
+                }
+            }
+        });
+
+        // Bubble Chart
+        const bubbleCtx = document.getElementById('bubbleChart').getContext('2d');
+        new Chart(bubbleCtx, {
+            type: 'bubble',
+            data: {
+                datasets: [
+                    { label: 'Quarter 1', data: [{ x: 44, y: 'Miami Heat', r: 8 }, { x: 30, y: 'Philadelphia 76ers', r: 8 }], backgroundColor: 'rgba(255, 99, 132, 0.8)' },
+                    { label: 'Quarter 2', data: [{ x: 50, y: 'Milwaukee Bucks', r: 8 }, { x: 45, y: 'Charlotte Hornets', r: 8 }], backgroundColor: 'rgba(54, 162, 235, 0.8)' },
+                    { label: 'Quarter 3', data: [{ x: 30, y: 'Phoenix Suns', r: 8 }, { x: 31, y: 'Los Angeles Lakers', r: 8 }], backgroundColor: 'rgba(255, 206, 86, 0.8)' },
+                    { label: 'Quarter 4', data: [{ x: 40, y: 'New York Knicks', r: 8 }, { x: 27, y: 'Portland Trail Blazers', r: 8 }], backgroundColor: 'rgba(75, 192, 192, 0.8)' }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.raw.y}: ${ctx.raw.x}`
+                        }
+                    }
+                },
+                scales: {
+                    x: { type: 'linear', title: { display: true, text: 'Points' } },
+                    y: { type: 'category', labels: ['Miami Heat', 'Philadelphia 76ers', 'Charlotte Hornets', 'Phoenix Suns', 'Los Angeles Lakers', 'New York Knicks', 'Portland Trail Blazers'], title: { display: true, text: 'Teams' } }
+                }
+            }
+        });
+    </script>
+</body>
+<script 
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
+</script>
+</html>
