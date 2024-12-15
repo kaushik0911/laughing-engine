@@ -1,88 +1,46 @@
-# laughing-engine
+#  NBA Data Analysis - README
 
-docker exec -it namenode bash
+##  Project Overview
 
-hdfs dfs -mkdir -p /nbadata/
+This project focuses on designing a solution architecture and implementing a data analytics system to analyze NBA basketball matches from the 2000-2001 season. The system supports both real-time and historical data analysis, providing insights for basketball analysts and team management groups.
 
-hdfs dfs -put /opt/hadoop/resources/nbadataset.csv /nbadata/
+##  Tasks and Deliverables
 
-hdfs dfs -put /opt/hadoop/resources/input.csv /nbadata/
+###  Task 1 - Designing a Solution Architecture
 
-hdfs dfs -put /opt/hadoop/resources/nbadatasettest.csv /nbadata/
+Design a system architecture to analyze real-time and historical data. The architecture includes:
 
-hdfs dfs -ls /nbadata
+1.  **System Diagram**
+2.  **Description of Components**
 
-yarn jar /opt/hadoop/resources/most_scoring_quarter-1.0-SNAPSHOT.jar org.iit.kaushik20241270.MostScoringQuarterDriver /nbadata/nbadataset.csv /nbadata/output/MostScoringQuarterDriver
+###  Task 2 - Data Analysis
 
+Perform data analysis using various tools and frameworks:
 
+1.  **Hadoop MapReduce**
+2.  **Hive or Pig**
+3.  **Spark**
 
-yarn jar /opt/hadoop/resources/most_scoring_quarter-1.0-SNAPSHOT.jar org.iit.kaushik20241270.MostScoringQuarterDriver /nbadata/input.csv /nbadata/output/MostScoringQuarterDriver
+###  Task 3 - Machine Learning with Spark MLlib
 
-hdfs dfs -ls /nbadata/output/MostScoringQuarterDriver
+Build a predictive model to estimate the average points a player must score to ensure a win for their team.
 
-hdfs dfs -cat /nbadata/output/MostScoringQuarterDriver
+###  Task 4 - Presentation of the Analysis
 
+Create a static web page or dashboard to display the results of the analysis:
 
-yarn jar /opt/hadoop/resources/most_scored_player-1.0-SNAPSHOT.jar org.iit.kaushik20241270.TopPlayerJob /nbadata/nbadataset.csv /nbadata/output/TopPlayerJob
+1.  **Visualization Topics**:
 
-hdfs dfs -cat /nbadata/output/TopPlayerJob/part-r-00000
+- Most scoring quarter for each team.
+- Top 5 teams based on total points.
+- Percentage of players scoring 40+ points in a single match.
+- Total matches won and lost by each team.
 
-hdfs dfs -ls /nbadata/output/TopPlayerJob
+2.  **Design Considerations**:
 
-hdfs dfs -rm -R /nbadata/output/TopPlayerJob
+- Ensure clear presentation of data.
+- Focus on user experience (UX) and user interface (UI) aspects for better accessibility and understanding.
 
-hdfs dfs -cat /nbadata/output/MostScoringQuarterDriver/part-r-00000
+##  Acknowledgments
 
-
-hdfs dfs -rm -R /nbadata/output
-
-yarn jar /opt/hadoop/resources/most_scored_player-1.0-SNAPSHOT.jar org.iit.kaushik20241270.TopPlayerJob /nbadata/nbadataset.csv /nbadata/output/TopPlayerJob
-
-
-Allen Iverson   1249
-
-
-
-CREATE EXTERNAL TABLE dataset (id INT,name STRING,age INT,salary FLOAT) STORED AS TEXTFILE LOCATION '/user/hive/data/data.csv' TBLPROPERTIES ('skip.header.line.count'='1');
-
-
-CREATE TABLE dataset (id INT,name STRING,age INT,salary FLOAT) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE LOCATION 'hdfs://hive-namenode:8020/user/hive/database' TBLPROPERTIES ('skip.header.line.count'='1');
-
-LOAD DATA INPATH 'hdfs://hive-namenode:8020/user/hive/data/data.csv' INTO TABLE dataset;
-
-
-CREATE EXTERNAL TABLE dataset (id INT, name STRING, age INT, salary FLOAT) STORED AS TEXTFILE LOCATION 'hdfs://hive-namenode:8020/user/hive/database' TBLPROPERTIES ('skip.header.line.count'='1');
-
-LOAD DATA INPATH 'hdfs://hive-namenode:8020/user/hive/data/data.csv' INTO TABLE dataset;
-
-CREATE TABLE recharge (id INT, name STRING, age INT, salary FLOAT) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE LOCATION 'hdfs://hive-namenode:8020/user/hive/warehouse/telecom.db/recharge';
-
-
-INSERT INTO recharge (id, name, age, salary) VALUES (100, "fernando", 18, 30);
-
-
-CREATE TABLE recharge ( cell_no INT, city STRING, name STRING, price FLOAT ) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE LOCATION 'hdfs://hive-namenode:8020/user/hive/warehouse/telecom.db/recharge';
-
-INSERT INTO recharge (cell_no,city,name,price) VALUES (999090,"sl","fernando",30.0);
-
-LOAD DATA LOCAL INPATH '/opt/hadoop/resources/recharge.input' INTO TABLE recharge;
-
-hdfs dfs -put -f /opt/hadoop/resources/nbadataset.csv hdfs://hive-namenode:8020/user/hive/warehouse/nba.db/
-
-
-LOAD DATA INPATH '/user/hive/data/data.csv' INTO TABLE dataset;
-
-LOAD DATA INPATH 'hdfs://hive-namenode:8020/user/hive/warehouse/nba.db/nbadataset.csv' INTO TABLE dataset;
-
-
-
-
-<!--  ------------- -->
-
-spark/bin/spark-shell --master spark://spark-master:7077 --conf "spark.eventLog.enabled=true" --conf "spark.eventLog.dir=/tmp/spark-events"
-
-
-val df = spark.read.csv("hdfs://spark-namenode:9000/nbadata/nbadataset.csv")
-
-
-park/bin/spark-submit --master local /opt/hadoop/resources/example.py
+Special thanks to the open-source community for providing the tools and frameworks used in this project.
