@@ -8,10 +8,7 @@ This project focuses on designing a solution architecture and implementing a dat
 
 ###  Task 1 - Designing a Solution Architecture
 
-Design a system architecture to analyze real-time and historical data. The architecture includes:
-
-1.  **System Diagram**
-2.  **Description of Components**
+Design a system architecture to analyze real-time and historical data.
 
 ###  Task 2 - Data Analysis
 
@@ -40,7 +37,3 @@ Create a static web page or dashboard to display the results of the analysis:
 
 - Ensure clear presentation of data.
 - Focus on user experience (UX) and user interface (UI) aspects for better accessibility and understanding.
-
-##  Acknowledgments
-
-Special thanks to the open-source community for providing the tools and frameworks used in this project.
